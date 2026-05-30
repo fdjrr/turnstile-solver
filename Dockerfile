@@ -67,4 +67,5 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
     CMD curl -f http://localhost:5000/health || exit 1
 
 # Run with xvfb for headless display
-CMD ["xvfb-run", "--auto-servernum", "--server-args=-screen 0 1920x1080x24", "uv", "run", "main.py"]
+# Start Xvfb in background, wait for it to be ready, then run the application
+CMD ["sh", "-c", "Xvfb :99 -screen 0 1920x1080x24 -nolisten tcp & sleep 2 && DISPLAY=:99 uv run main.py"]
