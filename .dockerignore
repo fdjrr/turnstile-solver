@@ -1,0 +1,27 @@
+# Git / IDE
+.git
+.gitignore
+.claude
+.vscode
+.idea
+
+# Python
+.venv
+__pycache__
+*.py[cod]
+*.egg-info
+.pytest_cache
+.mypy_cache
+.ruff_cache
+.coverage
+htmlcov
+
+# Local secrets & runtime
+.env
+proxies.txt
+*.log
+
+# Docs / misc (not needed in image)
+*.md
+!README.md
+.python-version

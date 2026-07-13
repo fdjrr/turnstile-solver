@@ -29,6 +29,26 @@ uv run python main.py dev
 
 Server listens on `http://127.0.0.1:8000` by default. OpenAPI docs: `/docs`.
 
+## Docker
+
+```bash
+# required before first compose up (bind mount target must be a file)
+cp proxies.txt.example proxies.txt
+
+docker compose up -d --build
+curl -s http://127.0.0.1:8000/health
+```
+
+Notes:
+
+- Container forces `API_HOST=0.0.0.0` and defaults `HEADLESS=true`, `BROWSER_OS=linux`.
+- `shm_size: 2gb` is set — browsers often crash with the default 64MB `/dev/shm`.
+- `./proxies.txt` is mounted read-only into the container — create the file first.
+- Override workers/port via env, e.g. `WORKER_COUNT=3 HOST_PORT=8000 docker compose up -d`.
+- First build runs `camoufox fetch` (large download). Later rebuilds reuse the
+  Docker layer unless `pyproject.toml` / `uv.lock` change — code edits alone
+  do **not** re-download the browser.
+
 ## API
 
 ### Health
@@ -55,12 +75,11 @@ curl -s -X POST http://127.0.0.1:8000/api/v1/task \
   -H 'content-type: application/json' \
   -d '{
     "site_key": "0x4AAAA...",
-    "page_url": "https://example.com/login",
-    "proxy": "user:pass@1.2.3.4:8080"
+    "page_url": "https://example.com/login"
   }'
 ```
 
-`proxy` is optional. If omitted, the server picks the next entry from `proxies.txt` (round-robin). If that file is empty, the solve runs direct (no proxy).
+Request body is only `site_key` + `page_url`. Proxy comes from `proxies.txt` (round-robin). If the file is empty/missing, the solve runs direct (no proxy).
 
 ```json
 {"task_id":"…","status":"pending"}
@@ -82,8 +101,7 @@ Ready:
   "status": "ready",
   "token": "0.xxxx…",
   "elapsed_ms": 18240,
-  "error": null,
-  "proxy": "http://user:***@1.2.3.4:8080"
+  "error": null
 }
 ```
 
@@ -106,9 +124,7 @@ while true; do
 done
 ```
 
-## Proxy formats
-
-Supported in request `proxy` and `proxies.txt`:
+## Proxy formats (`proxies.txt` only)
 
 ```
 host:port
@@ -136,10 +152,10 @@ socks5://user:pass@host:port
 
 ## How it works
 
-1. On startup, launch `WORKER_COUNT` Camoufox browsers into a pool.
-2. `POST /api/v1/task` stores a job (with optional proxy) and enqueues it.
+1. On startup, load `proxies.txt` and launch `WORKER_COUNT` Camoufox browsers into a pool.
+2. `POST /api/v1/task` stores a job, assigns the next pool proxy (if any), and enqueues it.
 3. Dispatcher pulls jobs; each job acquires one free browser (semaphore-limited by `MAX_CONCURRENT`).
-4. Browser opens a fresh context (with proxy if set), fulfills `page_url` with a Turnstile widget page, waits for token.
+4. Browser opens a fresh context (with assigned proxy), fulfills `page_url` with a Turnstile widget page, waits for token.
 5. Browser returns to the pool; poll endpoint returns `ready` / `failed`.
 
 ## Notes / limits

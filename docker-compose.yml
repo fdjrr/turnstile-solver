@@ -1,0 +1,45 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: turnstile-solver
+    ports:
+      - "${HOST_PORT:-8000}:8000"
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      API_HOST: "0.0.0.0"
+      API_PORT: "8000"
+      HEADLESS: "${HEADLESS:-true}"
+      BROWSER_OS: "${BROWSER_OS:-linux}"
+      WORKER_COUNT: "${WORKER_COUNT:-2}"
+      MAX_CONCURRENT: "${MAX_CONCURRENT:-2}"
+      SOLVE_TIMEOUT_SECONDS: "${SOLVE_TIMEOUT_SECONDS:-60}"
+      NAVIGATION_TIMEOUT_MS: "${NAVIGATION_TIMEOUT_MS:-30000}"
+      TASK_TTL_SECONDS: "${TASK_TTL_SECONDS:-600}"
+      PROXY_FILE: "proxies.txt"
+    volumes:
+      - ./proxies.txt:/app/proxies.txt:ro
+    # Browsers need shared memory; default 64MB is too small
+    shm_size: "2gb"
+    restart: unless-stopped
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=5)",
+        ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    networks:
+      - homelabs
+
+networks:
+  homelabs:
+    external: true

@@ -16,3 +16,6 @@ proxies.txt
 # Playwright / OS noise
 *.log
 .DS_Store
+
+# Docker local build cache (if used)
+.docker-cache/
