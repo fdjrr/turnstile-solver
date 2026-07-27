@@ -10,6 +10,7 @@ services:
       - path: .env
     volumes:
       - ./proxies.txt:/app/proxies.txt:ro
+      - data:/home/appuser/.cache
     # Browsers need shared memory; default 64MB is too small
     shm_size: "2gb"
     restart: unless-stopped
@@ -27,6 +28,9 @@ services:
       start_period: 60s
     networks:
       - homelabs
+
+volumes:
+  data:
 
 networks:
   homelabs:

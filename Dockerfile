@@ -55,19 +55,27 @@ COPY --chown=appuser:appuser pyproject.toml uv.lock ./
 RUN uv sync --frozen --no-dev --no-install-project
 
 # ── Browser layer (cached across code-only rebuilds) ──────────────────────
-# Camoufox installs under $XDG_CACHE_HOME/camoufox.
-# MUST stay above "COPY . ." so editing source does not re-download.
-RUN uv run camoufox fetch && uv run camoufox path
+# Camoufox fetch is moved to the ENTRYPOINT so it lives on a named volume.
+# This means the ~300 MB download survives "docker compose down" and is never
+# repeated on rebuilds unless the volume is explicitly removed.
+# We still cache the `camoufox path` check so the first container start
+# doesn't do an unnecessary re-download if we ever re-add a build-time step here.
 
 # ── Application layer (changes often; does NOT re-fetch browser) ──────────
 COPY --chown=appuser:appuser . .
 RUN uv sync --frozen --no-dev \
     && printf '# Add proxies one per line\n' > /app/proxies.txt
 
+# ── Entrypoint ───────────────────────────────────────────────────────────
+COPY --chown=appuser:appuser entrypoint.sh /app/entrypoint.sh
+RUN chmod +x /app/entrypoint.sh
+
 ENV PATH="/app/.venv/bin:$PATH"
 
 EXPOSE 8000
 
 # Healthcheck is defined in docker-compose.yml only (single source of truth).
+
+ENTRYPOINT ["/app/entrypoint.sh"]
 
 CMD ["python", "main.py", "api"]

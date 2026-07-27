@@ -133,13 +133,11 @@ class TurnstileSolver:
             headless=headless,
             os=settings.browser_os,
             humanize=True,
-            firefox_options={
-                "firefox_user_prefs": {
-                    "dom.ipc.processCount": 1,
-                    "dom.ipc.processCount.privilegedabout": 1,
-                    "dom.ipc.processCount.privilegedmozilla": 1,
-                    "dom.ipc.processCount.webIsolated": 1,
-                },
+            firefox_user_prefs={
+                "dom.ipc.processCount": 1,
+                "dom.ipc.processCount.privilegedabout": 1,
+                "dom.ipc.processCount.privilegedmozilla": 1,
+                "dom.ipc.processCount.webIsolated": 1,
             },
         )
         self._browser = await self._camoufox.__aenter__()
