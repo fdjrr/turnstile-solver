@@ -106,6 +106,7 @@ class TurnstileSolver:
         self.worker_id = worker_id
         self._camoufox: Optional[AsyncCamoufox] = None
         self._browser: Any = None
+        self._solves = 0
 
     @property
     def ready(self) -> bool:
@@ -123,12 +124,26 @@ class TurnstileSolver:
             settings.browser_os,
         )
 
+        # Limit Firefox content processes to prevent unbounded RAM growth.
+        # With default "dom.ipc.processCount"=∞, Firefox spawns a new content
+        # process per context—even after close().  1 content process + the
+        # forked-web/socket/utility infrastructure is ~40-60 MB; without the
+        # cap, every solve leaks another ~15-25 MB tab process until OOM.
         self._camoufox = AsyncCamoufox(
             headless=headless,
             os=settings.browser_os,
             humanize=True,
+            firefox_options={
+                "firefox_user_prefs": {
+                    "dom.ipc.processCount": 1,
+                    "dom.ipc.processCount.privilegedabout": 1,
+                    "dom.ipc.processCount.privilegedmozilla": 1,
+                    "dom.ipc.processCount.webIsolated": 1,
+                },
+            },
         )
         self._browser = await self._camoufox.__aenter__()
+        self._solves = 0
         logger.info("Worker {} Camoufox ready", self.worker_id)
 
     async def stop(self) -> None:
@@ -145,6 +160,12 @@ class TurnstileSolver:
             self._browser = None
         logger.info("Worker {} Camoufox stopped", self.worker_id)
 
+    async def restart(self) -> None:
+        """Stop and re-start the Camoufox browser to shed accumulated content processes."""
+        logger.info("Worker {} restarting browser ({} solves)", self.worker_id, self._solves)
+        await self.stop()
+        await self.start()
+
     async def solve(
         self,
         site_key: str,
@@ -154,6 +175,11 @@ class TurnstileSolver:
         """Solve Turnstile for site_key as if rendered on page_url. Returns token."""
         if self._browser is None:
             raise SolveError("browser is not started")
+
+        # Periodic restart to shed accumulated Firefox content processes
+        # that context.close() does not fully clean up.
+        if settings.max_solves_per_browser > 0 and self._solves >= settings.max_solves_per_browser:
+            await self.restart()
 
         page_url = _normalize_url(page_url)
 
@@ -200,18 +226,28 @@ class TurnstileSolver:
             token = await self._wait_for_token(page, settings.solve_timeout_seconds)
             if not token:
                 raise SolveError("timeout waiting for turnstile token")
+            self._solves += 1
             logger.info(
-                "Worker {} token obtained ({} chars) for {}",
+                "Worker {} token obtained ({} chars) for {} (solve #{})",
                 self.worker_id,
                 len(token),
                 page_url,
+                self._solves,
             )
             return token
         finally:
             try:
-                await context.close()
+                await page.close()
             except Exception:  # noqa: BLE001
                 pass
+            try:
+                await context.close()
+            except Exception as exc:  # noqa: BLE001
+                logger.warning(
+                    "Worker {} context.close() failed: {}",
+                    self.worker_id,
+                    exc,
+                )
 
     async def _read_state(self, page) -> dict:
         return await page.evaluate(

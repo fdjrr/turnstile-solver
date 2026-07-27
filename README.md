@@ -146,6 +146,7 @@ socks5://user:pass@host:port
 | `SOLVE_TIMEOUT_SECONDS` | `60` | Per-task solve deadline |
 | `NAVIGATION_TIMEOUT_MS` | `30000` | `page.goto` timeout |
 | `TASK_TTL_SECONDS` | `600` | Drop finished tasks after TTL |
+| `MAX_SOLVES_PER_BROWSER` | `100` | Restart browser after N solves (RAM cleanup; 0 = disable) |
 | `HEADLESS` | `true` | `false` / `true` / `virtual` (Xvfb) |
 | `BROWSER_OS` | `windows` | Camoufox fingerprint OS |
 | `PROXY_FILE` | `proxies.txt` | Optional proxy list path |

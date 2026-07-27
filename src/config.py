@@ -27,6 +27,9 @@ class Settings(BaseSettings):
     navigation_timeout_ms: int = 30_000
     task_ttl_seconds: int = 600
 
+    # Restart browser after this many solves to prevent content-process buildup.
+    max_solves_per_browser: int = 100
+
     # Camoufox headless mode:
     # - false: headed
     # - true: headless
