@@ -44,7 +44,6 @@ Notes:
 - Container forces `API_HOST=0.0.0.0` and defaults `HEADLESS=true`, `BROWSER_OS=linux`.
 - `shm_size: 2gb` is set — browsers often crash with the default 64MB `/dev/shm`.
 - `./proxies.txt` is mounted read-only into the container — create the file first.
-- Override workers/port via env, e.g. `WORKER_COUNT=3 HOST_PORT=8000 docker compose up -d`.
 - First build runs `camoufox fetch` (large download). Later rebuilds reuse the
   Docker layer unless `pyproject.toml` / `uv.lock` change — code edits alone
   do **not** re-download the browser.
