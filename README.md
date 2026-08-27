@@ -78,7 +78,17 @@ curl -s -X POST http://127.0.0.1:8000/api/v1/task \
   }'
 ```
 
-Request body is only `site_key` + `page_url`. Proxy comes from `proxies.txt` (round-robin). If the file is empty/missing, the solve runs direct (no proxy).
+Request body requires `site_key` + `page_url`. By default, the solver assigns a proxy from `proxies.txt` (round-robin), or solves direct when the file is empty/missing.
+
+To force the Turnstile browser to use the **same proxy as the client signup request**, send an optional `proxy` field. It overrides the server-side proxy pool for that task. Supported formats include `host:port`, `host:port:user:pass`, `http://user:pass@host:port`, and `socks5://host:port`.
+
+```json
+{
+  "site_key": "0x4AAAA...",
+  "page_url": "https://example.com/login",
+  "proxy": "http://user:pass@203.0.113.10:8080"
+}
+```
 
 ```json
 {"task_id":"…","status":"pending"}

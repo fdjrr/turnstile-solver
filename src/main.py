@@ -16,7 +16,7 @@ from src.models import (
     TaskResponse,
     TaskStatus,
 )
-from src.proxy import ProxyPool, redact_proxy
+from src.proxy import ProxyPool, parse_proxy, redact_proxy
 from src.solver import BrowserPool
 from src.store import TaskStore
 from src.worker import SolveWorker
@@ -96,8 +96,18 @@ async def create_task(body: CreateTaskRequest) -> CreateTaskResponse:
             detail="browser pool is not ready",
         )
 
-    # Proxy is server-side only (proxies.txt round-robin), never from the client.
-    proxy_url = await proxy_pool.next()
+    # A request proxy takes precedence; otherwise use the server-side pool.
+    proxy_url = None
+    if body.proxy:
+        try:
+            proxy_url = parse_proxy(body.proxy)
+        except ValueError as exc:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail=f"invalid proxy: {exc}",
+            ) from exc
+    else:
+        proxy_url = await proxy_pool.next()
 
     task = await store.create(
         site_key=body.site_key,

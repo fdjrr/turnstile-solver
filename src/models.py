@@ -16,6 +16,11 @@ class TaskStatus(str, Enum):
 class CreateTaskRequest(BaseModel):
     site_key: str = Field(..., min_length=1, description="Turnstile sitekey")
     page_url: AnyHttpUrl = Field(..., description="Page URL where the widget appears")
+    proxy: Optional[str] = Field(
+        None,
+        description="Optional proxy URL to solve through. If set, overrides the "
+        "server-side proxy pool for this task.",
+    )
 
 
 class CreateTaskResponse(BaseModel):
