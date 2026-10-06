@@ -16,6 +16,7 @@ class Task:
     task_id: str
     site_key: str
     page_url: str
+    action: Optional[str] = None  # Turnstile widget action, if the caller set one
     proxy: Optional[str] = None  # normalized proxy URL, if any
     status: TaskStatus = TaskStatus.PENDING
     token: Optional[str] = None
@@ -45,12 +46,14 @@ class TaskStore:
         site_key: str,
         page_url: str,
         proxy: Optional[str] = None,
+        action: Optional[str] = None,
     ) -> Task:
         task = Task(
             task_id=str(uuid.uuid4()),
             site_key=site_key,
             page_url=page_url,
             proxy=proxy,
+            action=action,
         )
         async with self._lock:
             await self._purge_expired_unlocked()

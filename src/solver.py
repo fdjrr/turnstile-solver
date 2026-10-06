@@ -29,9 +29,17 @@ def _normalize_url(url: str) -> str:
     return urlunsplit((parts.scheme, parts.netloc, path, parts.query, parts.fragment))
 
 
-def _widget_html(site_key: str) -> str:
-    """Minimal page with an *implicit* Turnstile widget (data-sitekey div)."""
+def _widget_html(site_key: str, action: Optional[str] = None) -> str:
+    """Minimal page with an *implicit* Turnstile widget (data-sitekey div).
+
+    When ``action`` is set it is emitted as ``data-action`` so the minted token
+    carries Cloudflare's widget action (sites that verify ``action`` reject
+    tokens minted without it).
+    """
     safe_key = html.escape(site_key, quote=True)
+    action_attr = (
+        f'\n         data-action="{html.escape(action, quote=True)}"' if action else ""
+    )
     return f"""<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -52,7 +60,7 @@ def _widget_html(site_key: str) -> str:
 <body>
   <div class="center">
     <div class="cf-turnstile"
-         data-sitekey="{safe_key}"
+         data-sitekey="{safe_key}"{action_attr}
          data-theme="light"
          data-size="normal"
          data-callback="onTsSuccess"
@@ -169,8 +177,13 @@ class TurnstileSolver:
         site_key: str,
         page_url: str,
         proxy: Optional[str] = None,
+        action: Optional[str] = None,
     ) -> str:
-        """Solve Turnstile for site_key as if rendered on page_url. Returns token."""
+        """Solve Turnstile for site_key as if rendered on page_url. Returns token.
+
+        ``action`` (optional) is the widget action the target site expects in the
+        token, e.g. ``password_signup``.
+        """
         if self._browser is None:
             raise SolveError("browser is not started")
 
@@ -205,7 +218,7 @@ class TurnstileSolver:
                 await route.fulfill(
                     status=200,
                     content_type="text/html; charset=utf-8",
-                    body=_widget_html(site_key),
+                    body=_widget_html(site_key, action),
                 )
                 return
             await route.continue_()
@@ -214,10 +227,11 @@ class TurnstileSolver:
             await page.route("**/*", fulfill_document)
 
             logger.debug(
-                "Worker {} navigating to {} for site_key={}…",
+                "Worker {} navigating to {} for site_key={} action={}…",
                 self.worker_id,
                 page_url,
                 site_key[:12],
+                action or "-",
             )
             await page.goto(page_url, wait_until="domcontentloaded")
 

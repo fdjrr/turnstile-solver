@@ -80,6 +80,16 @@ curl -s -X POST http://127.0.0.1:8000/api/v1/task \
 
 Request body requires `site_key` + `page_url`. By default, the solver assigns a proxy from `proxies.txt` (round-robin), or solves direct when the file is empty/missing.
 
+Optional `action` sets Cloudflare's widget action on the minted token (for example `password_signup`, `password_recovery`, `magic_start`, `contact`). Send whatever action the target page passes to `turnstile.render` — sites that verify `action` reject tokens minted without it (they answer `403 request_unverified`). Must match `^[A-Za-z0-9_-]{0,32}$`; it is echoed back by the poll endpoint.
+
+```json
+{
+  "site_key": "0x4AAAA...",
+  "page_url": "https://example.com/sign-up",
+  "action": "password_signup"
+}
+```
+
 To force the Turnstile browser to use the **same proxy as the client signup request**, send an optional `proxy` field. It overrides the server-side proxy pool for that task. Supported formats include `host:port`, `host:port:user:pass`, `http://user:pass@host:port`, and `socks5://host:port`.
 
 ```json
@@ -110,7 +120,8 @@ Ready:
   "status": "ready",
   "token": "0.xxxx…",
   "elapsed_ms": 18240,
-  "error": null
+  "error": null,
+  "action": "password_signup"
 }
 ```
 

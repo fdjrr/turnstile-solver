@@ -113,12 +113,14 @@ async def create_task(body: CreateTaskRequest) -> CreateTaskResponse:
         site_key=body.site_key,
         page_url=str(body.page_url),
         proxy=proxy_url,
+        action=body.action or None,
     )
     await worker.enqueue(task.task_id)
     logger.info(
-        "Created task {} for {} proxy={}",
+        "Created task {} for {} action={} proxy={}",
         task.task_id,
         body.page_url,
+        task.action or "-",
         redact_proxy(proxy_url) if proxy_url else "direct",
     )
     return CreateTaskResponse(task_id=task.task_id, status=TaskStatus.PENDING)
@@ -147,6 +149,7 @@ async def get_task(task_id: str, response: Response) -> TaskResponse:
             else None
         ),
         error=task.error,
+        action=task.action,
     )
 
 

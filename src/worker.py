@@ -87,10 +87,11 @@ class SolveWorker:
 
             proxy_label = redact_proxy(task.proxy) if task.proxy else "direct"
             logger.info(
-                "Solving task {} site_key={}… url={} proxy={}",
+                "Solving task {} site_key={}… url={} action={} proxy={}",
                 task_id,
                 task.site_key[:12],
                 task.page_url,
+                task.action or "-",
                 proxy_label,
             )
 
@@ -100,6 +101,7 @@ class SolveWorker:
                     task.site_key,
                     task.page_url,
                     proxy=task.proxy,
+                    action=task.action,
                 )
                 await self.store.mark_ready(task_id, token)
                 finished = await self.store.get(task_id)
