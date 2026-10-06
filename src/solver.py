@@ -306,6 +306,12 @@ class TurnstileSolver:
         last_error: Optional[str] = None
         reloads = 0
         max_reloads = 2
+        # Cloudflare's interactive challenge needs a click, then ~2-3s of
+        # verification. Clicking every poll tick restarts that verification and
+        # the widget spins forever — throttle instead of hammering it.
+        click_interval = 4.0
+        next_click = time.monotonic() + 1.5
+        clicks = 0
 
         while time.monotonic() < deadline:
             state = await self._read_state(page)
@@ -335,7 +341,17 @@ class TurnstileSolver:
                     await asyncio.sleep(1.0)
                     continue
 
-            await self._try_click_widget(page)
+            now = time.monotonic()
+            if now >= next_click:
+                await self._try_click_widget(page)
+                clicks += 1
+                next_click = now + click_interval
+                logger.debug(
+                    "Worker {} widget click #{}, next in {:.0f}s",
+                    self.worker_id,
+                    clicks,
+                    click_interval,
+                )
             await asyncio.sleep(poll_interval)
 
         state = await self._read_state(page)
